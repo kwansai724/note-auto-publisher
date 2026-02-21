@@ -1,11 +1,11 @@
 /** 公開時に自動付与するハッシュタグ */
 const DEFAULT_HASHTAGS = [
-  "毎日投稿",
+  "Udemy",
+  "副業",
+  "仕組み化",
   "systemeio",
   "コンテンツ販売",
-  "Udemy",
-  "仕組み化",
-  "副業",
+  "毎日投稿",
 ];
 
 export interface Config {
