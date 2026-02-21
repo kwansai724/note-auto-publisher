@@ -64,13 +64,16 @@ export async function publishDraft(
     }
   }
 
-  await humanDelay(2000, 4000);
+  // 公開設定ページの描画を待機
+  log("公開設定ページの読み込みを待機中...");
+  const submitButton = page.getByRole("button", { name: "投稿する" });
+  await submitButton.waitFor({ state: "visible", timeout: 30000 });
+  await humanDelay(1000, 2000);
 
   // 公開設定ページで「投稿する」ボタンをクリック
   log("「投稿する」ボタンを探索中...");
-  const submitButton = page.getByRole("button", { name: /投稿/ });
 
-  if (await submitButton.isVisible({ timeout: 10000 }).catch(() => false)) {
+  if (await submitButton.isVisible()) {
     await submitButton.click();
     log("「投稿する」をクリック");
   } else {

@@ -8,11 +8,11 @@ on:
       dry_run:
         description: 'DRY RUNモード（公開せずに確認のみ）'
         required: false
-        default: 'false'
+        default: 'true'
         type: choice
         options:
-          - 'false'
           - 'true'
+          - 'false'
 
 jobs:
   publish:
