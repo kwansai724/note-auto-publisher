@@ -2,5 +2,4 @@ node_modules/
 dist/
 .env
 screenshots/
-x-auth.json
 *.tsbuildinfo

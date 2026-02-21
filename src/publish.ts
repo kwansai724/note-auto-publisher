@@ -1,7 +1,7 @@
 import { Page } from "playwright";
 import { Config } from "./config.js";
 import { Draft } from "./drafts.js";
-import { humanDelay, log, safeScreenshot } from "./utils.js";
+import { humanDelay, log } from "./utils.js";
 
 /**
  * 下書き記事を公開する
@@ -11,7 +11,7 @@ import { humanDelay, log, safeScreenshot } from "./utils.js";
  *   → 編集ボタンクリック → エディタ（editor.note.com/.../edit/）
  *   → 「公開に進む」クリック → 公開設定（editor.note.com/.../publish/）
  *   → ハッシュタグ入力 → 「投稿する」クリック
- *   → シェアモーダル表示（公開完了）→ Xボタンクリック → Xに投稿
+ *   → シェアモーダル表示（公開完了）→ ✕で閉じる
  */
 export async function publishDraft(
   page: Page,
@@ -66,30 +66,15 @@ export async function publishDraft(
   await humanDelay(1000, 2000);
   await submitButton.click();
 
-  // Step 5: シェアモーダルで公開完了を検知
+  // Step 5: シェアモーダルで公開完了を検知 → 閉じる
   log("公開完了を待機中...");
   const shareModal = page.locator("text=記事をシェアしてみましょう");
   await shareModal.waitFor({ state: "visible", timeout: 30000 });
   log("公開完了（シェアモーダル表示）");
 
-  // Step 6: Xにシェア（失敗しても記事公開は成功扱い）
-  try {
-    log("Xにシェア中...");
-    const [xPage] = await Promise.all([
-      page.context().waitForEvent("page"), // 新しいタブを待機
-      page.locator('button[aria-label="X"]').click(),
-    ]);
-
-    await xPage.waitForLoadState("networkidle");
-    await humanDelay(2000, 3000);
-    const postButton = xPage.getByRole("button", { name: "ポストする" });
-    await postButton.waitFor({ state: "visible", timeout: 15000 });
-    await postButton.click();
-    log("Xに投稿完了");
-    await humanDelay(2000, 3000);
-
-    await xPage.close();
-  } catch (error) {
-    log(`Xへの投稿に失敗（記事公開は成功）: ${error}`);
-  }
+  // モーダルの✕ボタンをクリックして閉じる
+  const closeButton = page.locator('button:near(:text("記事をシェアしてみましょう"))').first();
+  await closeButton.click();
+  await humanDelay();
+  log("シェアモーダルを閉じました");
 }
