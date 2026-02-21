@@ -48,6 +48,15 @@ jobs:
           HEADLESS: 'true'
         run: npm start
 
+      - name: queue.yml の変更をコミット
+        run: |
+          git diff --quiet queue.yml && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add queue.yml
+          git commit -m "公開済み記事をキューから削除"
+          git push
+
       - name: エラー時スクリーンショット保存
         if: failure()
         uses: actions/upload-artifact@v4

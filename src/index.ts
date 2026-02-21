@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { loadConfig } from "./config.js";
 import { login } from "./auth.js";
-import { getDrafts, getNextDraft } from "./drafts.js";
+import { getDraftTitles, findNextDraft } from "./drafts.js";
+import { loadQueue, removeFromQueue } from "./queue.js";
 import { publishDraft } from "./publish.js";
 import { log } from "./utils.js";
 
@@ -14,28 +15,37 @@ async function main(): Promise<void> {
     log("[DRY RUN モード] 公開操作は実行されません");
   }
 
+  // キュー読み込み
+  const queue = loadQueue();
+  if (queue.length === 0) {
+    log("queue.yml が空です。公開する記事がありません");
+    log("=== 正常終了 ===");
+    return;
+  }
+  log(`キュー: ${queue.length}件`);
+
   // ログイン
   const { browser, page } = await login(config);
 
   try {
     // 下書き一覧取得
-    const drafts = await getDrafts(page);
+    const draftTitles = await getDraftTitles(page);
 
-    if (drafts.length === 0) {
-      log("公開対象の下書きが見つかりません（プレフィックス [01] 等が付いた下書きが必要です）");
-      log("=== 正常終了（公開対象なし） ===");
-      return;
-    }
-
-    // 次に公開すべき下書き
-    const nextDraft = getNextDraft(drafts);
+    // キューと下書きを照合
+    const nextDraft = findNextDraft(queue, draftTitles);
     if (!nextDraft) {
-      log("公開対象の下書きがありません");
+      log("キューの記事が下書き一覧に見つかりません");
+      log("=== 正常終了（公開対象なし） ===");
       return;
     }
 
     // 公開実行
     await publishDraft(page, nextDraft, config);
+
+    // 公開後、queue.yml から削除
+    if (!config.dryRun) {
+      removeFromQueue(nextDraft.title);
+    }
 
     log("=== 完了 ===");
   } finally {
