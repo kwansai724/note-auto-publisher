@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
-    "dry-run": "DRY_RUN=true tsx src/index.ts"
+    "dry-run": "DRY_RUN=true tsx src/index.ts",
+    "save-x-auth": "tsx src/save-x-auth.ts"
   },
   "dependencies": {
     "dotenv": "^17.3.1",

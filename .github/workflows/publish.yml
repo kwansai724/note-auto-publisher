@@ -44,6 +44,7 @@ jobs:
         env:
           NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
           NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
+          X_AUTH_STATE: ${{ secrets.X_AUTH_STATE }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           HEADLESS: 'true'
         run: npm start

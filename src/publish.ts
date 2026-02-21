@@ -72,22 +72,24 @@ export async function publishDraft(
   await shareModal.waitFor({ state: "visible", timeout: 30000 });
   log("公開完了（シェアモーダル表示）");
 
-  // Step 6: Xにシェア
-  log("Xにシェア中...");
-  const [xPage] = await Promise.all([
-    page.context().waitForEvent("page"), // 新しいタブを待機
-    page.locator('button[aria-label="X"]').click(),
-  ]);
+  // Step 6: Xにシェア（失敗しても記事公開は成功扱い）
+  try {
+    log("Xにシェア中...");
+    const [xPage] = await Promise.all([
+      page.context().waitForEvent("page"), // 新しいタブを待機
+      page.locator('button[aria-label="X"]').click(),
+    ]);
 
-  // Xの投稿画面で「ポストする」をクリック
-  await xPage.waitForLoadState("networkidle");
-  await humanDelay(2000, 3000);
-  const postButton = xPage.getByRole("button", { name: "ポストする" });
-  await postButton.waitFor({ state: "visible", timeout: 15000 });
-  await postButton.click();
-  log("Xに投稿完了");
-  await humanDelay(2000, 3000);
+    await xPage.waitForLoadState("networkidle");
+    await humanDelay(2000, 3000);
+    const postButton = xPage.getByRole("button", { name: "ポストする" });
+    await postButton.waitFor({ state: "visible", timeout: 15000 });
+    await postButton.click();
+    log("Xに投稿完了");
+    await humanDelay(2000, 3000);
 
-  // Xのタブを閉じる
-  await xPage.close();
+    await xPage.close();
+  } catch (error) {
+    log(`Xへの投稿に失敗（記事公開は成功）: ${error}`);
+  }
 }
