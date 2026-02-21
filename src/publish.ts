@@ -3,6 +3,7 @@ import { Config } from "./config.js";
 import { Draft } from "./drafts.js";
 import { humanDelay, log } from "./utils.js";
 
+
 /**
  * 下書き記事を公開する
  *
@@ -11,7 +12,7 @@ import { humanDelay, log } from "./utils.js";
  *   → 編集ボタンクリック → エディタ（editor.note.com/.../edit/）
  *   → 「公開に進む」クリック → 公開設定（editor.note.com/.../publish/）
  *   → ハッシュタグ入力 → 「投稿する」クリック
- *   → シェアモーダル表示（公開完了）→ ✕で閉じる
+ *   → シェアモーダル表示（公開完了）
  */
 export async function publishDraft(
   page: Page,
@@ -71,10 +72,4 @@ export async function publishDraft(
   const shareModal = page.locator("text=記事をシェアしてみましょう");
   await shareModal.waitFor({ state: "visible", timeout: 30000 });
   log("公開完了（シェアモーダル表示）");
-
-  // モーダルの✕ボタンをクリックして閉じる
-  const closeButton = page.locator('button:near(:text("記事をシェアしてみましょう"))').first();
-  await closeButton.click();
-  await humanDelay();
-  log("シェアモーダルを閉じました");
 }
