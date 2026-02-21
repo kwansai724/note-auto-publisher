@@ -11,7 +11,7 @@ import { humanDelay, log, safeScreenshot } from "./utils.js";
  *   → 編集ボタンクリック → エディタ（editor.note.com/.../edit/）
  *   → 「公開に進む」クリック → 公開設定（editor.note.com/.../publish/）
  *   → ハッシュタグ入力 → 「投稿する」クリック
- *   → 記事ページ（note.com/ユーザー名/n/...）
+ *   → シェアモーダル表示（公開完了）→ Xボタンクリック → Xに投稿
  */
 export async function publishDraft(
   page: Page,
@@ -59,23 +59,35 @@ export async function publishDraft(
     await humanDelay();
   }
 
-  // Step 4: 「投稿する」クリック → 記事公開
+  // Step 4: 「投稿する」クリック
   log("「投稿する」をクリック中...");
   const submitButton = page.getByRole("button", { name: "投稿する" });
   await submitButton.waitFor({ state: "visible", timeout: 30000 });
   await humanDelay(1000, 2000);
   await submitButton.click();
 
-  // Step 5: 公開完了を検証（記事ページへのリダイレクト）
+  // Step 5: シェアモーダルで公開完了を検知
   log("公開完了を待機中...");
-  try {
-    await page.waitForURL(/note\.com\/[^/]+\/n\//, { timeout: 30000 });
-    const publishedUrl = page.url();
-    log(`公開完了: ${publishedUrl}`);
-  } catch {
-    await safeScreenshot(page, "publish-verify-failed");
-    throw new Error(
-      "公開完了の確認に失敗しました。記事ページへの遷移を検知できませんでした"
-    );
-  }
+  const shareModal = page.locator("text=記事をシェアしてみましょう");
+  await shareModal.waitFor({ state: "visible", timeout: 30000 });
+  log("公開完了（シェアモーダル表示）");
+
+  // Step 6: Xにシェア
+  log("Xにシェア中...");
+  const [xPage] = await Promise.all([
+    page.context().waitForEvent("page"), // 新しいタブを待機
+    page.locator('button[aria-label="X"]').click(),
+  ]);
+
+  // Xの投稿画面で「ポストする」をクリック
+  await xPage.waitForLoadState("networkidle");
+  await humanDelay(2000, 3000);
+  const postButton = xPage.getByRole("button", { name: "ポストする" });
+  await postButton.waitFor({ state: "visible", timeout: 15000 });
+  await postButton.click();
+  log("Xに投稿完了");
+  await humanDelay(2000, 3000);
+
+  // Xのタブを閉じる
+  await xPage.close();
 }

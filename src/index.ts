@@ -54,22 +54,7 @@ async function main(): Promise<void> {
   }
 }
 
-// リトライ付き実行
-async function run(): Promise<void> {
-  try {
-    await main();
-  } catch (error) {
-    log(`エラー発生: ${error}`);
-
-    // 1回リトライ
-    log("リトライ中...");
-    try {
-      await main();
-    } catch (retryError) {
-      log(`リトライ失敗: ${retryError}`);
-      process.exit(1);
-    }
-  }
-}
-
-run();
+main().catch((error) => {
+  log(`エラー: ${error}`);
+  process.exit(1);
+});
