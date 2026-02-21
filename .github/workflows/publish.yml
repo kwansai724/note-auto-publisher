@@ -1,0 +1,58 @@
+name: note下書き自動公開
+
+on:
+  schedule:
+    - cron: '0 11 * * *'  # JST 20:00 = UTC 11:00
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'DRY RUNモード（公開せずに確認のみ）'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: 依存パッケージインストール
+        run: npm ci
+
+      - name: Playwright ブラウザインストール
+        run: npx playwright install chromium --with-deps
+
+      - name: 認証情報マスク
+        run: |
+          echo "::add-mask::${{ secrets.NOTE_EMAIL }}"
+          echo "::add-mask::${{ secrets.NOTE_PASSWORD }}"
+
+      - name: 下書き公開実行
+        env:
+          NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
+          NOTE_PASSWORD: ${{ secrets.NOTE_PASSWORD }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          HEADLESS: 'true'
+        run: npm start
+
+      - name: エラー時スクリーンショット保存
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-screenshots
+          path: screenshots/
+          retention-days: 7
+          if-no-files-found: ignore

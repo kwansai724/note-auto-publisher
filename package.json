@@ -1,0 +1,19 @@
+{
+  "name": "note-auto-publisher",
+  "version": "1.0.0",
+  "description": "noteの下書き記事を毎日自動公開するツール",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dry-run": "DRY_RUN=true tsx src/index.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}
