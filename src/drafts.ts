@@ -4,7 +4,6 @@ import { humanDelay, log } from "./utils.js";
 export interface Draft {
   title: string;
   order: number;
-  url: string;
 }
 
 /**
@@ -50,7 +49,7 @@ export async function getDrafts(page: Page): Promise<Draft[]> {
     // プレフィックスなしの下書きは無視
     if (order === null) continue;
 
-    drafts.push({ title, order, url: "" });
+    drafts.push({ title, order });
   }
 
   // 番号順にソート

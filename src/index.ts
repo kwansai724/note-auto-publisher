@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     }
 
     // 公開実行
-    await publishDraft(page, nextDraft, config.dryRun);
+    await publishDraft(page, nextDraft, config);
 
     log("=== 完了 ===");
   } finally {

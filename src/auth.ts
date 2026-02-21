@@ -1,6 +1,6 @@
 import { Browser, Page, chromium } from "playwright";
 import { Config } from "./config.js";
-import { humanDelay, log, maskSecret, safeScreenshot } from "./utils.js";
+import { humanDelay, log, maskSecret } from "./utils.js";
 
 export interface AuthResult {
   browser: Browser;
@@ -31,42 +31,23 @@ export async function login(config: Config): Promise<AuthResult> {
     await humanDelay();
 
     // メールアドレス入力
-    const emailInput = page.locator('#email');
-    await emailInput.waitFor({ state: "visible" });
-    await emailInput.fill(config.noteEmail);
+    await page.locator("#email").fill(config.noteEmail);
     await humanDelay(500, 1000);
 
     // パスワード入力
-    const passwordInput = page.locator('#password');
-    await passwordInput.fill(config.notePassword);
+    await page.locator("#password").fill(config.notePassword);
     await humanDelay(500, 1000);
 
     // ログインボタンクリック
-    const loginButton = page.getByRole('button', { name: 'ログイン' });
-    await loginButton.click();
+    await page.getByRole("button", { name: "ログイン" }).click();
 
-    // ログイン成功を待機（ダッシュボードまたはホームへのリダイレクト）
+    // ログイン成功を待機（ホームへのリダイレクト）
     log("ログイン中...");
-    await page.waitForURL(/note\.com\/(dashboard|$)/, { timeout: 15000 });
-
-    // 2段階認証チェック
-    const twoFactorInput = page.locator('input[name="one_time_password"]');
-    if (await twoFactorInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await browser.close();
-      throw new Error(
-        "2段階認証が有効になっています。noteの設定で2段階認証を無効にするか、アプリパスワードを使用してください"
-      );
-    }
+    await page.waitForURL("https://note.com/", { timeout: 15000 });
 
     log("ログイン成功");
     return { browser, page };
   } catch (error) {
-    // ログイン画面のスクリーンショットは撮影しない（セキュリティ）
-    // ログイン後のエラーのみスクリーンショットを撮る
-    const currentUrl = page.url();
-    if (!currentUrl.includes("/login")) {
-      await safeScreenshot(page, "login-error");
-    }
     await browser.close();
     throw error;
   }

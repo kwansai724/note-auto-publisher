@@ -1,15 +1,23 @@
 import { Page } from "playwright";
+import { Config } from "./config.js";
 import { Draft, cleanTitle } from "./drafts.js";
 import { humanDelay, log, safeScreenshot } from "./utils.js";
 
 /**
  * 下書き記事を公開する
+ *
+ * 導線:
+ *   下書き一覧（note.com/notes?status=draft）
+ *   → 編集ボタンクリック → エディタ（editor.note.com/.../edit/）
+ *   → 「公開に進む」クリック → 公開設定（editor.note.com/.../publish/）
+ *   → 「投稿する」クリック → 記事ページ（note.com/ユーザー名/n/...）
  */
 export async function publishDraft(
   page: Page,
   draft: Draft,
-  dryRun: boolean
+  config: Config
 ): Promise<void> {
+  const { dryRun } = config;
   const title = cleanTitle(draft.title);
   log(`対象記事: "${title}" (元タイトル: "${draft.title}")`);
 
@@ -18,22 +26,22 @@ export async function publishDraft(
     return;
   }
 
-  // 記事一覧から編集ボタンをクリックして編集ページに遷移
+  // Step 1: 記事一覧から編集ボタンをクリック → エディタページ
   log("下書き編集ページに遷移中...");
-  const editButton = page.locator(`button.o-articleList__link[aria-label="${draft.title}を編集"]`);
+  const editButton = page.locator(
+    `button.o-articleList__link[aria-label="${draft.title}を編集"]`
+  );
   await editButton.click();
-  await page.waitForURL(/note\.com\/notes\//, { timeout: 15000 });
+  await page.waitForURL(/editor\.note\.com\/notes\/.*\/edit/, {
+    timeout: 15000,
+  });
   await humanDelay();
 
-  // タイトルからプレフィックスを除去
-  const titleInput = page.locator(
-    'textarea[placeholder*="タイトル"], textarea[data-placeholder*="タイトル"], [contenteditable="true"]'
-  ).first();
-
+  // Step 2: タイトルからプレフィックスを除去
+  const titleInput = page.locator('[contenteditable="true"]').first();
   if (await titleInput.isVisible({ timeout: 5000 }).catch(() => false)) {
     log("タイトルからプレフィックスを除去中...");
     await titleInput.click();
-    // 全選択して置き換え
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type(title, { delay: 50 });
     await humanDelay();
@@ -41,59 +49,37 @@ export async function publishDraft(
     log("タイトル入力欄が見つかりません（セレクタ要確認）");
   }
 
-  // 「公開に進む」ボタンをクリック
-  log("「公開に進む」ボタンを探索中...");
-  const publishButton = page.getByRole("button", { name: /公開/ });
+  // Step 3: 「公開に進む」クリック → 公開設定ページ
+  log("「公開に進む」をクリック中...");
+  await page.getByRole("button", { name: "公開に進む" }).click();
+  await page.waitForURL(/editor\.note\.com\/notes\/.*\/publish/, {
+    timeout: 15000,
+  });
+  await humanDelay();
 
-  if (await publishButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await publishButton.click();
-    log("「公開に進む」をクリック");
-  } else {
-    // フォールバック: テキストで探索
-    const fallbackButton = page.locator("button", { hasText: "公開" }).first();
-    if (
-      await fallbackButton.isVisible({ timeout: 5000 }).catch(() => false)
-    ) {
-      await fallbackButton.click();
-      log("「公開」ボタンをクリック（フォールバック）");
-    } else {
-      await safeScreenshot(page, "publish-button-not-found");
-      throw new Error(
-        "「公開」ボタンが見つかりません。noteのUI変更の可能性があります"
-      );
+  // Step 4: ハッシュタグを入力
+  if (config.hashtags.length > 0) {
+    log("ハッシュタグを設定中...");
+    const hashtagInput = page.locator(
+      'input[placeholder="ハッシュタグを追加する"]'
+    );
+    for (const tag of config.hashtags) {
+      await hashtagInput.fill(tag);
+      await hashtagInput.press("Enter");
+      await humanDelay(300, 600);
     }
+    log(`ハッシュタグ ${config.hashtags.length}件を設定`);
+    await humanDelay();
   }
 
-  // 公開設定ページの描画を待機
-  log("公開設定ページの読み込みを待機中...");
+  // Step 5: 「投稿する」クリック → 記事公開
+  log("「投稿する」をクリック中...");
   const submitButton = page.getByRole("button", { name: "投稿する" });
   await submitButton.waitFor({ state: "visible", timeout: 30000 });
   await humanDelay(1000, 2000);
+  await submitButton.click();
 
-  // 公開設定ページで「投稿する」ボタンをクリック
-  log("「投稿する」ボタンを探索中...");
-
-  if (await submitButton.isVisible()) {
-    await submitButton.click();
-    log("「投稿する」をクリック");
-  } else {
-    const fallbackSubmit = page
-      .locator("button", { hasText: "投稿" })
-      .first();
-    if (
-      await fallbackSubmit.isVisible({ timeout: 5000 }).catch(() => false)
-    ) {
-      await fallbackSubmit.click();
-      log("「投稿」ボタンをクリック（フォールバック）");
-    } else {
-      await safeScreenshot(page, "submit-button-not-found");
-      throw new Error(
-        "「投稿する」ボタンが見つかりません。noteのUI変更の可能性があります"
-      );
-    }
-  }
-
-  // 公開完了を検証（記事ページへのリダイレクト）
+  // Step 6: 公開完了を検証（記事ページへのリダイレクト）
   log("公開完了を待機中...");
   try {
     await page.waitForURL(/note\.com\/[^/]+\/n\//, { timeout: 30000 });
@@ -101,6 +87,8 @@ export async function publishDraft(
     log(`公開完了: ${publishedUrl}`);
   } catch {
     await safeScreenshot(page, "publish-verify-failed");
-    throw new Error("公開完了の確認に失敗しました。記事ページへの遷移を検知できませんでした");
+    throw new Error(
+      "公開完了の確認に失敗しました。記事ページへの遷移を検知できませんでした"
+    );
   }
 }
