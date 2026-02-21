@@ -18,9 +18,11 @@ export async function publishDraft(
     return;
   }
 
-  // 下書き編集ページに遷移
+  // 記事一覧から編集ボタンをクリックして編集ページに遷移
   log("下書き編集ページに遷移中...");
-  await page.goto(draft.url, { waitUntil: "networkidle" });
+  const editButton = page.locator(`button.o-articleList__link[aria-label="${draft.title}を編集"]`);
+  await editButton.click();
+  await page.waitForURL(/note\.com\/notes\//, { timeout: 15000 });
   await humanDelay();
 
   // タイトルからプレフィックスを除去
@@ -32,7 +34,7 @@ export async function publishDraft(
     log("タイトルからプレフィックスを除去中...");
     await titleInput.click();
     // 全選択して置き換え
-    await page.keyboard.press("Meta+a");
+    await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type(title, { delay: 50 });
     await humanDelay();
   } else {

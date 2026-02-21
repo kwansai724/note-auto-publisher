@@ -31,18 +31,18 @@ export async function login(config: Config): Promise<AuthResult> {
     await humanDelay();
 
     // メールアドレス入力
-    const emailInput = page.locator('input[name="login"]');
+    const emailInput = page.locator('#email');
     await emailInput.waitFor({ state: "visible" });
     await emailInput.fill(config.noteEmail);
     await humanDelay(500, 1000);
 
     // パスワード入力
-    const passwordInput = page.locator('input[name="password"]');
+    const passwordInput = page.locator('#password');
     await passwordInput.fill(config.notePassword);
     await humanDelay(500, 1000);
 
     // ログインボタンクリック
-    const loginButton = page.locator('button[type="submit"]');
+    const loginButton = page.getByRole('button', { name: 'ログイン' });
     await loginButton.click();
 
     // ログイン成功を待機（ダッシュボードまたはホームへのリダイレクト）

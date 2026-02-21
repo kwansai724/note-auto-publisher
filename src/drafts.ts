@@ -27,42 +27,30 @@ export function cleanTitle(title: string): string {
  */
 export async function getDrafts(page: Page): Promise<Draft[]> {
   log("下書き一覧を取得中...");
-  await page.goto("https://note.com/dashboard/drafts", {
+  await page.goto("https://note.com/notes?status=draft", {
     waitUntil: "networkidle",
   });
   await humanDelay();
 
-  // 下書き記事のリンクを取得
-  const draftElements = page.locator(
-    'a[href*="/n/"][href*="dashboard"] >> visible=true'
-  );
-
-  // より広い範囲でリンクを探索（noteのUI構造に合わせてフォールバック）
-  let links = await draftElements.all();
-
-  if (links.length === 0) {
-    // フォールバック: ダッシュボードのすべてのリンクから下書き記事を特定
-    const allLinks = page.locator('a[href*="/n/"]');
-    links = await allLinks.all();
-  }
+  // 記事カードの編集ボタン（aria-labelにタイトルが入っている）
+  const editButtons = await page
+    .locator("button.o-articleList__link")
+    .all();
 
   const drafts: Draft[] = [];
 
-  for (const link of links) {
-    const href = await link.getAttribute("href");
-    const text = await link.textContent();
+  for (const button of editButtons) {
+    const ariaLabel = await button.getAttribute("aria-label");
+    if (!ariaLabel) continue;
 
-    if (!href || !text) continue;
-
-    const title = text.trim();
+    // aria-label は "タイトルを編集" の形式
+    const title = ariaLabel.replace(/を編集$/, "");
     const order = parsePrefix(title);
 
     // プレフィックスなしの下書きは無視
     if (order === null) continue;
 
-    const url = href.startsWith("http") ? href : `https://note.com${href}`;
-
-    drafts.push({ title, order, url });
+    drafts.push({ title, order, url: "" });
   }
 
   // 番号順にソート

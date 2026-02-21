@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { loadConfig } from "./config.js";
 import { login } from "./auth.js";
 import { getDrafts, getNextDraft } from "./drafts.js";
