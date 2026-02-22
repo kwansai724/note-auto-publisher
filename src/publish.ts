@@ -8,24 +8,25 @@ import { humanDelay, log } from "./utils.js";
  * 下書き記事を公開する
  *
  * 導線:
- *   下書き一覧（note.com/notes?status=draft）
- *   → 編集ボタンクリック → エディタ（editor.note.com/.../edit/）
- *   → 「公開に進む」クリック → 公開設定（editor.note.com/.../publish/）
- *   → ハッシュタグ入力 → 「投稿する」クリック
- *   → シェアモーダル表示（公開完了）
+ * 下書き一覧（note.com/notes?status=draft）
+ * → 編集ボタンクリック → エディタ（editor.note.com/.../edit/）
+ * → 「公開に進む」クリック → 公開設定（editor.note.com/.../publish/）
+ * → ハッシュタグ入力 → 「投稿する」クリック
+ * → シェアモーダル表示（公開完了）
+ * → 公開記事一覧へ遷移し、公開されたURLを取得する
  */
 export async function publishDraft(
   page: Page,
   draft: Draft,
   config: Config,
   hashtags: string[]
-): Promise<void> {
+): Promise<string | null> {
   log(`対象記事: "${draft.title}"`);
 
   if (config.dryRun) {
     log(`[DRY RUN] ハッシュタグ: ${hashtags.join(", ")}`);
     log("[DRY RUN] 公開操作をスキップします");
-    return;
+    return null;
   }
 
   // Step 1: 記事一覧から編集ボタンをクリック → エディタページ
@@ -102,6 +103,33 @@ export async function publishDraft(
       log("⚠ 投稿は成功した前提で続行します");
     }
   }
+
+  // Step 6: 公開済みの記事URLを取得
+  log("公開記事のURLを取得中...");
+  try {
+    await page.goto("https://note.com/notes?status=published", {
+      waitUntil: "networkidle",
+    });
+    await humanDelay();
+
+    // 今公開した記事のタイトルを持つリンク要素を探す
+    const articleLink = page.getByRole("link").filter({ hasText: draft.title }).first();
+    
+    // 要素から飛び先のURL（href属性）を抽出
+    const href = await articleLink.getAttribute("href");
+
+    if (href) {
+      // 相対パス（/username/n/...）の場合はドメインを補完
+      const fullUrl = href.startsWith("http") ? href : `https://note.com${href}`;
+      log(`記事URLを取得しました: ${fullUrl}`);
+      return fullUrl;
+    }
+  } catch (e) {
+    log(`記事URLの取得に失敗しました: ${e}`);
+  }
+
+  // URLがうまく取得できなかった場合のフォールバック（一覧ページのURLを返す）
+  return "https://note.com/notes?status=published";
 }
 
 /**

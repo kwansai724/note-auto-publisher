@@ -40,11 +40,39 @@ async function main(): Promise<void> {
     }
 
     // 公開実行（記事ごとのハッシュタグを渡す）
-    await publishDraft(page, match.draft, config, match.hashtags);
+    const publishedUrl = await publishDraft(page, match.draft, config, match.hashtags);
 
-    // 公開後、queue.yml から削除
+    // 公開後、queue.yml から削除およびメール送信
     if (!config.dryRun) {
       removeFromQueue(match.draft.title);
+
+      // GAS経由でメール送信
+      if (config.gasWebhookUrl && config.notificationEmail) {
+        log("GAS経由で通知メールを送信中...");
+        try {
+          const payload = {
+            title: match.draft.title,
+            url: publishedUrl || "https://note.com/notes?status=published",
+            to: config.notificationEmail,
+          };
+
+          const response = await fetch(config.gasWebhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (response.ok) {
+            log("通知メールの送信リクエストに成功しました");
+          } else {
+            log(`通知メールの送信リクエストに失敗しました: ${response.status}`);
+          }
+        } catch (e) {
+          log(`通知メール送信中のエラー: ${e}`);
+        }
+      } else {
+        log("GAS_WEBHOOK_URL または NOTIFICATION_EMAIL が未設定のため、メール通知はスキップします");
+      }
     }
 
     log("=== 完了 ===");

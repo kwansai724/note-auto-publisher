@@ -3,6 +3,8 @@ export interface Config {
   notePassword: string;
   dryRun: boolean;
   headless: boolean;
+  gasWebhookUrl?: string;
+  notificationEmail?: string;
 }
 
 export function loadConfig(): Config {
@@ -20,5 +22,7 @@ export function loadConfig(): Config {
     notePassword,
     dryRun: process.env.DRY_RUN === "true",
     headless: process.env.HEADLESS !== "false", // デフォルトheadless
+    gasWebhookUrl: process.env.GAS_WEBHOOK_URL,
+    notificationEmail: process.env.NOTIFICATION_EMAIL,
   };
 }
