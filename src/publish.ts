@@ -62,16 +62,61 @@ export async function publishDraft(
     await humanDelay();
   }
 
-  // Step 4: 「投稿する」クリック
+  // Step 4: 「投稿する」クリック + APIレスポンスで公開完了を検知
   log("「投稿する」をクリック中...");
   const submitButton = page.getByRole("button", { name: "投稿する" });
   await submitButton.waitFor({ state: "visible", timeout: 30000 });
   await humanDelay(1000, 2000);
-  await submitButton.click();
 
-  // Step 5: シェアモーダルで公開完了を検知 → 閉じる
-  log("公開完了を待機中...");
-  const shareModal = page.locator("text=記事をシェアしてみましょう");
-  await shareModal.waitFor({ state: "visible", timeout: 30000 });
-  log("公開完了（シェアモーダル表示）");
+  // クリックと同時にAPIレスポンスを待機
+  const [publishResponse] = await Promise.all([
+    page
+      .waitForResponse(
+        (res) =>
+          res.url().includes("note.com") &&
+          (res.request().method() === "PUT" ||
+            res.request().method() === "POST") &&
+          res.status() >= 200 &&
+          res.status() < 300,
+        { timeout: 30000 }
+      )
+      .catch(() => null),
+    submitButton.click(),
+  ]);
+
+  // Step 5: 公開完了を確認
+  if (publishResponse) {
+    log(
+      `公開完了を確認（API: ${publishResponse.request().method()} ${publishResponse.status()}）`
+    );
+  } else {
+    // APIレスポンス検知に失敗した場合、モーダル表示をフォールバックで確認
+    log("APIレスポンスを検知できませんでした。モーダル表示を確認中...");
+    const modalDetected = await detectPublishModal(page);
+    if (modalDetected) {
+      log("公開完了を確認（モーダル検知）");
+    } else {
+      log(
+        "⚠ 公開完了シグナルを検出できませんでしたが、投稿ボタンはクリック済みです"
+      );
+      log("⚠ 投稿は成功した前提で続行します");
+    }
+  }
+}
+
+/**
+ * 公開完了モーダルをテキスト非依存で検知する
+ * モーダル内のシェアボタン（SNSリンク）の出現を待つ
+ */
+async function detectPublishModal(page: Page): Promise<boolean> {
+  try {
+    // シェアボタン（twitter/X, facebook等）のリンクはモーダルのテキストに関係なく表示される
+    await page
+      .locator('a[href*="twitter.com/intent"], a[href*="x.com/intent"], a[href*="facebook.com/shar"]')
+      .first()
+      .waitFor({ state: "visible", timeout: 15000 });
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -90,8 +90,9 @@ export function removeFromQueue(publishedTitle: string): void {
 
   // 履歴に追記
   const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const timestamp = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const timestamp = `${jst.getUTCFullYear()}/${pad(jst.getUTCMonth() + 1)}/${pad(jst.getUTCDate())} ${pad(jst.getUTCHours())}:${pad(jst.getUTCMinutes())}`;
   appendFileSync(HISTORY_PATH, `- title: ${publishedTitle}\n  published_at: "${timestamp}"\n`);
 
   log(`queue.yml から削除: "${publishedTitle}"`);
