@@ -54,95 +54,36 @@ export async function publishDraft(
     await humanDelay();
   }
 
-  // Step 4: 「投稿する」クリック + APIレスポンスで公開完了を検知
+  // Step 4: 現在のエディタのURLからノートキーを抽出してURLを生成
+  // URL例: https://editor.note.com/notes/n5c8d865722ae/publish
+  const currentUrl = page.url();
+  const noteKeyMatch = currentUrl.match(/notes\/([a-zA-Z0-9_-]+)\/publish/);
+  let publishedUrl: string | null = null;
+  
+  if (noteKeyMatch) {
+    const noteKey = noteKeyMatch[1];
+    // note公式のショートリンク形式を生成（クリックすると自動でフルURLにリダイレクトされます）
+    publishedUrl = `https://note.com/n/${noteKey}`;
+    log(`記事のショートURLを生成しました: ${publishedUrl}`);
+  }
+
+  // Step 5: 「投稿する」クリック
   log("「投稿する」をクリック中...");
   const submitButton = page.getByRole("button", { name: "投稿する" });
   await submitButton.waitFor({ state: "visible", timeout: 30000 });
-  await humanDelay(1000, 2000);
+  await submitButton.click();
 
-  // クリックと同時にAPIレスポンスを待機
-  const [publishResponse] = await Promise.all([
-    page
-      .waitForResponse(
-        (res) =>
-          res.url().includes("note.com") &&
-          (res.request().method() === "PUT" ||
-            res.request().method() === "POST") &&
-          res.status() >= 200 &&
-          res.status() < 300,
-        { timeout: 30000 }
-      )
-      .catch(() => null),
-    submitButton.click(),
-  ]);
-
-  let publishedUrl: string | null = null;
-
-  // Step 5: 公開完了を確認し、APIレスポンスから `data.note_url` を抽出
-  if (publishResponse) {
-    log(`公開完了を確認（API: ${publishResponse.request().method()} ${publishResponse.status()}）`);
-    try {
-      const body = await publishResponse.json();
-      // レスポンスから直接URLを取得
-      if (body && body.data && body.data.note_url) {
-        publishedUrl = body.data.note_url;
-        log(`APIレスポンスから記事URLを取得しました: ${publishedUrl}`);
-      }
-    } catch (e) {
-      log(`APIレスポンスの解析に失敗しました: ${e}`);
-    }
-  } else {
-    log("APIレスポンスを検知できませんでした。モーダル表示を確認中...");
-    const modalDetected = await detectPublishModal(page);
-    if (modalDetected) {
-      log("公開完了を確認（モーダル検知）");
-    } else {
-      log("⚠ 公開完了シグナルを検出できませんでしたが、投稿ボタンはクリック済みです");
-    }
-  }
-
-  // Step 6: APIからURLが取れなかった場合のフォールバック（一覧画面から取得）
-  if (!publishedUrl) {
-    log("一覧画面から公開記事のURLを取得中...");
-    try {
-      await page.goto("https://note.com/notes?status=published", {
-        waitUntil: "domcontentloaded",
-      });
-      await humanDelay(2000, 3000);
-
-      const shortTitle = draft.title.length > 15 ? draft.title.substring(0, 15) : draft.title;
-      let articleLink = page.locator('a').filter({ hasText: shortTitle }).first();
-
-      if (await articleLink.count() === 0) {
-        log("タイトルでの検索に失敗したため、一番上の記事リンクを取得します");
-        articleLink = page.locator('a[href*="/n/"]').first();
-      }
-
-      const href = await articleLink.getAttribute("href", { timeout: 5000 });
-
-      if (href) {
-        publishedUrl = href.startsWith("http") ? href : `https://note.com${href}`;
-        log(`一覧画面から記事URLを取得しました: ${publishedUrl}`);
-      }
-    } catch (e) {
-      log(`記事URLの取得に失敗しました: ${e}`);
-    }
-  }
-
-  return publishedUrl || "https://note.com/notes?status=published";
-}
-
-/**
- * 公開完了モーダルをテキスト非依存で検知する
- */
-async function detectPublishModal(page: Page): Promise<boolean> {
+  // Step 6: 公開完了モーダルを検知して完了を確認
+  log("公開完了を待機中（モーダル検知）...");
   try {
-    await page
-      .locator('a[href*="twitter.com/intent"], a[href*="x.com/intent"], a[href*="facebook.com/shar"]')
-      .first()
-      .waitFor({ state: "visible", timeout: 15000 });
-    return true;
-  } catch {
-    return false;
+    // いただいたHTMLの構造に基づき、「リンクをコピー」ボタンまたは「X(Twitter)」ボタンの出現を待つ
+    const modalButton = page.locator('button[aria-label="リンクをコピー"], button[data-type="twitter"]').first();
+    await modalButton.waitFor({ state: "visible", timeout: 15000 });
+    log("公開完了を確認（モーダル検知）");
+  } catch (e) {
+    log(`⚠ 公開完了モーダルの検知に失敗しましたが、投稿処理は続行します: ${e}`);
   }
+
+  // 万が一取得できなかった場合のフォールバック
+  return publishedUrl || "https://note.com/notes?status=published";
 }
