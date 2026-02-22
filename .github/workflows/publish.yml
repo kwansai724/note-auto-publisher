@@ -51,13 +51,14 @@ jobs:
           HEADLESS: 'true'
         run: npm start
 
-      - name: queue.yml の変更をコミット
+      - name: queue.yml / history.yml の変更をコミット
         run: |
-          git diff --quiet queue.yml && exit 0
+          git diff --quiet queue.yml && git diff --quiet --no-index /dev/null history.yml 2>/dev/null && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add queue.yml
-          git commit -m "公開済み記事をキューから削除"
+          git add queue.yml history.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "公開済み記事をキューから削除・履歴を更新"
           git push
 
       - name: エラー時スクリーンショット保存
