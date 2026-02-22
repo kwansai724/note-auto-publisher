@@ -2,6 +2,8 @@
 
 noteの下書き記事を毎日自動で公開するツールです。GitHub Actions + Playwrightで動作します。
 
+公開完了時に指定のメールアドレスへ通知を送ることも可能です。
+
 ## 仕組み
 
 1. 毎日20:00（JST）にGitHub Actionsが起動
@@ -9,6 +11,7 @@ noteの下書き記事を毎日自動で公開するツールです。GitHub Act
 3. noteにログインし、下書き一覧とタイトルを照合
 4. 最初にマッチした記事にハッシュタグを設定して公開（1日1記事）
 5. 公開後、`queue.yml` から自動で削除し、`history.yml` に公開履歴（タイトルと時間）を保存してコミット
+6. （設定されている場合）GASのWebhook経由で、公開記事のフルURLを含む完了通知メールを送信
 
 ## クイックスタート
 
@@ -56,10 +59,20 @@ npm start
 
 リポジトリの Settings → Secrets and variables → Actions で以下を設定：
 
+#### 必須設定
+
 | Secret名 | 値 |
-|---|---|
-| `NOTE_EMAIL` | noteのメールアドレス |
-| `NOTE_PASSWORD` | noteのパスワード |
+| :---- | :---- |
+| NOTE_EMAIL | noteのメールアドレス |
+| NOTE_PASSWORD | noteのパスワード |
+
+#### オプション設定（URLの最適化とメール通知）
+
+| Secret名 | 値 | 説明 |
+| :---- | :---- | :---- |
+| NOTE_USER_ID | takah_note などのnote ID | 通知メールのURLをフルURL（/takah_note/n/...）にする場合に設定 |
+| GAS_WEBHOOK_URL | https://script.google.com/... | 通知を送るGASのデプロイURL |
+| NOTIFICATION_EMAIL | youremail@example.com | 投稿完了通知を受け取るメールアドレス |
 
 ### 5. 手動テスト
 
