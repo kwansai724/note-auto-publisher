@@ -1,24 +1,60 @@
-import { readFileSync, writeFileSync } from "fs";
+import { appendFileSync, readFileSync, writeFileSync } from "fs";
 import { log } from "./utils.js";
 
 const QUEUE_PATH = "queue.yml";
+const HISTORY_PATH = "history.yml";
+
+export interface QueueItem {
+  title: string;
+  hashtags: string[];
+}
 
 /**
- * queue.yml からタイトル一覧を読み込む
+ * queue.yml からキューアイテム一覧を読み込む
+ *
+ * フォーマット:
+ *   - title: 記事タイトル
+ *     hashtags:
+ *       - タグ1
+ *       - タグ2
  */
-export function loadQueue(): string[] {
+export function loadQueue(): QueueItem[] {
   const content = readFileSync(QUEUE_PATH, "utf-8");
-  const titles: string[] = [];
+  const items: QueueItem[] = [];
+  const lines = content.split("\n");
 
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    // "- タイトル" 形式の行を取得（コメント・空行はスキップ）
-    if (trimmed.startsWith("- ")) {
-      titles.push(trimmed.slice(2).trim());
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const titleMatch = line.match(/^- title:\s*(.+)$/);
+    if (titleMatch) {
+      const title = titleMatch[1].trim();
+      const hashtags: string[] = [];
+
+      // 次の行が "  hashtags:" か確認
+      if (i + 1 < lines.length && lines[i + 1].match(/^\s+hashtags:\s*$/)) {
+        i += 2; // hashtags: の次の行へ
+        // インデントされた "- タグ" を収集
+        while (i < lines.length) {
+          const tagMatch = lines[i].match(/^\s+-\s+(.+)$/);
+          if (tagMatch) {
+            hashtags.push(tagMatch[1].trim());
+            i++;
+          } else {
+            break;
+          }
+        }
+      } else {
+        i++;
+      }
+
+      items.push({ title, hashtags });
+    } else {
+      i++;
     }
   }
 
-  return titles;
+  return items;
 }
 
 /**
@@ -27,14 +63,37 @@ export function loadQueue(): string[] {
 export function removeFromQueue(publishedTitle: string): void {
   const content = readFileSync(QUEUE_PATH, "utf-8");
   const lines = content.split("\n");
-  const newLines = lines.filter((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("- ")) {
-      return trimmed.slice(2).trim() !== publishedTitle;
+  const newLines: string[] = [];
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const titleMatch = line.match(/^- title:\s*(.+)$/);
+    if (titleMatch && titleMatch[1].trim() === publishedTitle) {
+      // このエントリ全体をスキップ
+      i++;
+      // hashtags: 行をスキップ
+      if (i < lines.length && lines[i].match(/^\s+hashtags:\s*$/)) {
+        i++;
+        // タグ行をスキップ
+        while (i < lines.length && lines[i].match(/^\s+-\s+/)) {
+          i++;
+        }
+      }
+    } else {
+      newLines.push(line);
+      i++;
     }
-    return true;
-  });
+  }
 
   writeFileSync(QUEUE_PATH, newLines.join("\n"));
+
+  // 履歴に追記
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const timestamp = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  appendFileSync(HISTORY_PATH, `- title: ${publishedTitle}\n  published_at: "${timestamp}"\n`);
+
   log(`queue.yml から削除: "${publishedTitle}"`);
+  log(`history.yml に記録: "${publishedTitle}" (${timestamp})`);
 }

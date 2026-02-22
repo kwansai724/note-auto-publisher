@@ -1,19 +1,8 @@
-/** 公開時に自動付与するハッシュタグ */
-const DEFAULT_HASHTAGS = [
-  "Udemy",
-  "副業",
-  "仕組み化",
-  "systemeio",
-  "コンテンツ販売",
-  "毎日投稿",
-];
-
 export interface Config {
   noteEmail: string;
   notePassword: string;
   dryRun: boolean;
   headless: boolean;
-  hashtags: string[];
 }
 
 export function loadConfig(): Config {
@@ -31,6 +20,5 @@ export function loadConfig(): Config {
     notePassword,
     dryRun: process.env.DRY_RUN === "true",
     headless: process.env.HEADLESS !== "false", // デフォルトheadless
-    hashtags: DEFAULT_HASHTAGS,
   };
 }

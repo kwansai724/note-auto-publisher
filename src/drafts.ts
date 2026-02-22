@@ -1,5 +1,6 @@
 import { Page } from "playwright";
 import { humanDelay, log } from "./utils.js";
+import { QueueItem } from "./queue.js";
 
 export interface Draft {
   title: string;
@@ -35,18 +36,23 @@ export async function getDraftTitles(page: Page): Promise<string[]> {
   return titles;
 }
 
+export interface MatchedDraft {
+  draft: Draft;
+  hashtags: string[];
+}
+
 /**
- * キューと下書き一覧を照合し、最初にマッチするタイトルを返す
+ * キューと下書き一覧を照合し、最初にマッチするエントリを返す
  */
 export function findNextDraft(
-  queue: string[],
+  queue: QueueItem[],
   draftTitles: string[]
-): Draft | null {
-  for (const queueTitle of queue) {
-    if (draftTitles.includes(queueTitle)) {
-      return { title: queueTitle };
+): MatchedDraft | null {
+  for (const item of queue) {
+    if (draftTitles.includes(item.title)) {
+      return { draft: { title: item.title }, hashtags: item.hashtags };
     }
-    log(`  キュー「${queueTitle}」→ 下書きに見つかりません（スキップ）`);
+    log(`  キュー「${item.title}」→ 下書きに見つかりません（スキップ）`);
   }
   return null;
 }

@@ -32,19 +32,19 @@ async function main(): Promise<void> {
     const draftTitles = await getDraftTitles(page);
 
     // キューと下書きを照合
-    const nextDraft = findNextDraft(queue, draftTitles);
-    if (!nextDraft) {
+    const match = findNextDraft(queue, draftTitles);
+    if (!match) {
       log("キューの記事が下書き一覧に見つかりません");
       log("=== 正常終了（公開対象なし） ===");
       return;
     }
 
-    // 公開実行
-    await publishDraft(page, nextDraft, config);
+    // 公開実行（記事ごとのハッシュタグを渡す）
+    await publishDraft(page, match.draft, config, match.hashtags);
 
     // 公開後、queue.yml から削除
     if (!config.dryRun) {
-      removeFromQueue(nextDraft.title);
+      removeFromQueue(match.draft.title);
     }
 
     log("=== 完了 ===");

@@ -17,11 +17,13 @@ import { humanDelay, log } from "./utils.js";
 export async function publishDraft(
   page: Page,
   draft: Draft,
-  config: Config
+  config: Config,
+  hashtags: string[]
 ): Promise<void> {
   log(`対象記事: "${draft.title}"`);
 
   if (config.dryRun) {
+    log(`[DRY RUN] ハッシュタグ: ${hashtags.join(", ")}`);
     log("[DRY RUN] 公開操作をスキップします");
     return;
   }
@@ -46,17 +48,17 @@ export async function publishDraft(
   await humanDelay();
 
   // Step 3: ハッシュタグを入力
-  if (config.hashtags.length > 0) {
+  if (hashtags.length > 0) {
     log("ハッシュタグを設定中...");
     const hashtagInput = page.locator(
       'input[placeholder="ハッシュタグを追加する"]'
     );
-    for (const tag of config.hashtags) {
+    for (const tag of hashtags) {
       await hashtagInput.fill(tag);
       await hashtagInput.press("Enter");
       await humanDelay(300, 600);
     }
-    log(`ハッシュタグ ${config.hashtags.length}件を設定`);
+    log(`ハッシュタグ ${hashtags.length}件を設定`);
     await humanDelay();
   }
 
