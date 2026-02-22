@@ -62,9 +62,15 @@ export async function publishDraft(
   
   if (noteKeyMatch) {
     const noteKey = noteKeyMatch[1];
-    // note公式のショートリンク形式を生成（クリックすると自動でフルURLにリダイレクトされます）
-    publishedUrl = `https://note.com/n/${noteKey}`;
-    log(`記事のショートURLを生成しました: ${publishedUrl}`);
+    
+    // ユーザーIDが設定されていればフルURL、なければショートURLを生成
+    if (config.noteUserId) {
+      publishedUrl = `https://note.com/${config.noteUserId}/n/${noteKey}`;
+      log(`記事のフルURLを生成しました: ${publishedUrl}`);
+    } else {
+      publishedUrl = `https://note.com/n/${noteKey}`;
+      log(`記事のショートURLを生成しました: ${publishedUrl}`);
+    }
   }
 
   // Step 5: 「投稿する」クリック

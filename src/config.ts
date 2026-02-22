@@ -1,6 +1,7 @@
 export interface Config {
   noteEmail: string;
   notePassword: string;
+  noteUserId?: string;
   dryRun: boolean;
   headless: boolean;
   gasWebhookUrl?: string;
@@ -20,6 +21,7 @@ export function loadConfig(): Config {
   return {
     noteEmail,
     notePassword,
+    noteUserId: process.env.NOTE_USER_ID,
     dryRun: process.env.DRY_RUN === "true",
     headless: process.env.HEADLESS !== "false", // デフォルトheadless
     gasWebhookUrl: process.env.GAS_WEBHOOK_URL,
