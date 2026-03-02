@@ -22,9 +22,10 @@ export async function publishDraft(
 
   // Step 1: 記事一覧から編集ボタンをクリック → エディタページ
   log("下書き編集ページに遷移中...");
-  const editButton = page.locator(
-    `button.o-articleList__link[aria-label="${draft.title}を編集"]`
-  );
+  const editButton = page.getByRole("button", {
+    name: `${draft.title}を編集`,
+    exact: true,
+  });
   await editButton.click();
   await page.waitForURL(/editor\.note\.com\/notes\/.*\/edit/, {
     timeout: 15000,
