@@ -41,9 +41,9 @@ export async function login(config: Config): Promise<AuthResult> {
     // ログインボタンクリック
     await page.getByRole("button", { name: "ログイン" }).click();
 
-    // ログイン成功を待機（ホームへのリダイレクト）
+    // ログイン成功を待機（ホームまたはユーザーページへのリダイレクト）
     log("ログイン中...");
-    await page.waitForURL("https://note.com/", { timeout: 15000 });
+    await page.waitForURL(/https:\/\/note\.com\//, { timeout: 15000 });
 
     log("ログイン成功");
     return { browser, page };
