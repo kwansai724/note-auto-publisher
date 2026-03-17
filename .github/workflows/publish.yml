@@ -44,6 +44,10 @@ jobs:
           echo "::add-mask::${{ secrets.NOTE_PASSWORD }}"
           echo "::add-mask::${{ secrets.GAS_WEBHOOK_URL }}"
 
+      - name: セッション復元
+        if: ${{ secrets.NOTE_SESSION != '' }}
+        run: echo '${{ secrets.NOTE_SESSION }}' > session.json
+
       - name: 下書き公開実行
         env:
           NOTE_EMAIL: ${{ secrets.NOTE_EMAIL }}
