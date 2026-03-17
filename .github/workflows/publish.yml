@@ -45,10 +45,13 @@ jobs:
           echo "::add-mask::${{ secrets.GAS_WEBHOOK_URL }}"
 
       - name: セッション復元
-        if: env.NOTE_SESSION != ''
+        if: env.NOTE_SESSION_VALUE != ''
         env:
-          NOTE_SESSION: ${{ secrets.NOTE_SESSION }}
-        run: echo "$NOTE_SESSION" > session.json
+          NOTE_SESSION_VALUE: ${{ secrets.NOTE_SESSION_VALUE }}
+        run: |
+          cat > session.json << EOF
+          {"cookies":[{"name":"_note_session_v5","value":"${NOTE_SESSION_VALUE}","domain":".note.com","path":"/","expires":-1,"httpOnly":true,"secure":true,"sameSite":"None"}],"origins":[]}
+          EOF
 
       - name: 下書き公開実行
         env:

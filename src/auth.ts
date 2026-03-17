@@ -1,7 +1,7 @@
 import { Browser, Page, chromium } from "playwright";
 import { existsSync } from "fs";
 import { Config } from "./config.js";
-import { humanDelay, log, maskSecret } from "./utils.js";
+import { log, maskSecret } from "./utils.js";
 
 const SESSION_PATH = "session.json";
 
@@ -19,7 +19,6 @@ export async function login(config: Config): Promise<AuthResult> {
     headless: config.headless,
   });
 
-  // 保存済みセッションがあればそれを使う
   const hasSession = existsSync(SESSION_PATH);
   if (hasSession) {
     log("保存済みセッションを使用...");
@@ -37,46 +36,22 @@ export async function login(config: Config): Promise<AuthResult> {
 
   try {
     if (hasSession) {
-      // セッションの有効性を確認
       log("セッションの有効性を確認中...");
       await page.goto("https://note.com/notes?status=draft", {
         waitUntil: "networkidle",
       });
 
-      // ログインページにリダイレクトされなければセッション有効
       if (!page.url().includes("/login")) {
         log("ログイン成功（セッション再利用）");
         return { browser, page };
       }
-      log("セッションが期限切れです。通常ログインを試みます...");
+      log("セッションが期限切れです");
     }
 
-    // 通常のメール/パスワードログイン
-    log("ログインページにアクセス中...");
-    await page.goto("https://note.com/login", { waitUntil: "networkidle" });
-    await humanDelay();
-
-    // メールアドレス入力
-    await page.locator("#email").fill(config.noteEmail);
-    await humanDelay(500, 1000);
-
-    // パスワード入力
-    await page.locator("#password").fill(config.notePassword);
-    await humanDelay(500, 1000);
-
-    // ログインボタンクリック
-    await page.getByRole("button", { name: "ログイン" }).click();
-
-    // ログイン成功を待機（ログインページ以外へのリダイレクト）
-    log("ログイン中...");
-    await page.waitForURL((url) => {
-      return url.origin === "https://note.com" && url.pathname !== "/login";
-    }, { timeout: 15000 });
-
-    // ログイン成功したらセッションを保存
-    await context.storageState({ path: SESSION_PATH });
-    log("ログイン成功（セッション保存済み）");
-    return { browser, page };
+    await browser.close();
+    throw new Error(
+      "セッションが無効です。session.json を更新してください"
+    );
   } catch (error) {
     await browser.close();
     throw error;
