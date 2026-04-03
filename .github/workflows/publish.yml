@@ -2,7 +2,7 @@ name: note下書き自動公開
 
 on:
   schedule:
-    - cron: '47 10 * * *'  # JST 19:47 = UTC 10:47
+    - cron: '32 10 * * *'  # JST 19:32 = UTC 10:32
   workflow_dispatch:
     inputs:
       dry_run:
